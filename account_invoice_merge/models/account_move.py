@@ -217,6 +217,26 @@ class AccountMove(models.Model):
                         if invoice_line:
                             so_line.write({"invoice_lines": [(6, 0, invoice_line.ids)]})
 
+        # Make link between original stock move
+        # None if stock is not installed
+        invoice_line_obj = self.env["account.move.line"]
+        for new_invoice_id in invoices_info:
+            if "stock.move" in self.env.registry:
+                stock_moves = old_invoices.mapped(
+                    "invoice_line_ids.move_line_ids.move_id"
+                )
+                for org_move in stock_moves:
+                    for move_line in org_move.move_line:
+                        invoice_line = invoice_line_obj.search(
+                            [
+                                ("id", "in", move_line.invoice_lines.ids),
+                                ("move_id", "=", new_invoice_id),
+                            ]
+                        )
+                        if invoice_line:
+                            move_line.write({"invoice_lines": [(6, 0, invoice_line.ids)]})
+
+        
         # recreate link (if any) between original analytic account line
         # (invoice time sheet for example) and this new invoice
         anal_line_obj = self.env["account.analytic.line"]
